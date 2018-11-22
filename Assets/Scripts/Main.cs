@@ -5,17 +5,15 @@ using UnityEngine.UI;
 
 public class Main : MonoBehaviour
 {
-    private int ticketNum = 0;
-    private int totalWallet = 0;
-    private int totalAmont = 0, totalBalanceAmount = 0;
-    private int remainElect;
-    private int remainCash;
+    private int totalWallet = 0, totalAmount = 0, totalBalanceAmount = 0;
 
-    [SerializeField] private Text ticketNumText, totalNumText;
-    [SerializeField] List<Text> denomiCashText = new List<Text>();// 投入額の金種のテキストの管理（10,000 -> 10の順）
+    // 切符のインスタンス
+    private Ticket ticket = new Ticket(1, 130, 124);
 
-    // 電子マネー
-    private ElectricMoney electricMoney = new ElectricMoney(1000);
+    // 電子マネーのインスタンス
+    private ElectronicMoney electronicMoney = new ElectronicMoney(1000);
+
+    // 現金のインスタンス
     // 投入額の金種の管理
     private List<CashStatus> denomiCash = new List<CashStatus>
     {
@@ -28,7 +26,7 @@ public class Main : MonoBehaviour
         new CashStatus(6, 10, 0),
     };
 
-    //ウォレットの金種の管理
+    //手持ちの金種の管理
     private List<CashStatus> walletCash = new List<CashStatus>
     {
         new CashStatus(0, 10000, 1),
@@ -56,69 +54,113 @@ public class Main : MonoBehaviour
 
     [SerializeField]
     private UIManager uiManager;
-    private Ticket ticket = new Ticket(1, 130, 124);
-    //private Cash cash = new Cash();
 
-    // Use this for initialization
-    void Start () 
+    enum MachineFaze
     {
-        ticketNumText.text = ticketNum.ToString();
-        InitWalletNum();
-
-        InitData();
-
-        //foreach (CashStatus amount in walletCash)
-        //{
-        //    totalWallet += amount.denomi * amount.count;
-        //}
+        Start,
+        ChoiceTicket,
+        TicketNum,
+        ChoicePayment,
+        CashAccount,
+        CashFinish,
+        ElectronicFinish
     }
 
-    // Update is called once per frame
+    [SerializeField]
+    private MachineFaze machineFaze = MachineFaze.Start;
+
+
     void Update () 
     {
-        uiManager.ArrowClickAccountBt(totalAmont, ticket.cashAmount);
+        MachineMode();
+
+        if(machineFaze == MachineFaze.CashAccount)
+            uiManager.ArrowClickAccountBt(totalAmount, ticket.cashAmount);
 	}
+
+    private void MachineMode()
+    {
+        switch (machineFaze)
+        {
+            case MachineFaze.Start:
+                InitData();
+                uiManager.Init();
+                uiManager.InitStart();
+                break;
+
+            case MachineFaze.ChoiceTicket:
+                uiManager.InitChoiceTicket();
+
+                break;
+
+            case MachineFaze.ChoicePayment:
+                uiManager.InitChoicePayment();
+
+                break;
+
+            case MachineFaze.CashAccount:
+                uiManager.InitCashAccount();
+                break;
+
+            case MachineFaze.CashFinish:
+                uiManager.InitCashFinish();
+                break;
+
+            case MachineFaze.ElectronicFinish:
+                uiManager.InitElectronicFinish();
+
+                break;
+
+        }
+
+    }
+    public void OnClickStartBt()
+    {
+        machineFaze = MachineFaze.ChoiceTicket;
+    }
+
+    public void OnClickPerchaseTicket()
+    {
+        machineFaze = MachineFaze.ChoicePayment;
+    }
+
+    public void OnClickCashChoicePayment()
+    {
+        machineFaze = MachineFaze.CashAccount;
+    }
+
+    public void OnClickCashAccount()
+    {
+        machineFaze = MachineFaze.CashFinish;
+    }
+
+    public void OnClickElectronicChoicePayment()
+    {
+        machineFaze = MachineFaze.ElectronicFinish;
+    }
+
+    public void ReturnTopFaze()
+    {
+        machineFaze = MachineFaze.Start;
+    }
+
 
     public void InitData()
     {
         totalWallet = 0;
-        totalAmont = 0;
-        uiManager.UpdateNumView(totalAmont, totalNumText);
-        uiManager.UpdateShotageAmountText(ticket.cashAmount, totalAmont);
+        totalAmount = 0;
+        InitWalletNum();
+        uiManager.UpdateTotalInputText(totalAmount);
+        uiManager.UpdateShotageAmountText(ticket.cashAmount, totalAmount);
         foreach (CashStatus wallet in walletCash)
         {
             totalWallet += wallet.denomi * wallet.count;
             denomiCash[wallet.index].count = 0;
             tempWalletNum[wallet.index] = wallet.count;
-            uiManager.UpdateNumView(denomiCash[wallet.index].count, denomiCashText[denomiCash[wallet.index].index]);
+            uiManager.UpdateInputText(denomiCash[wallet.index].count, denomiCash[wallet.index].index);
             uiManager.UpdateDenomiText(wallet.index, wallet.count);
             uiManager.UpdateCurrentWalletText(wallet.index, tempWalletNum[wallet.index], tempWalletNum, walletCash);
         }
-    }
-
-    public void ResetData()
-    {
-
-    }
-
-    public void PlusNum()
-    {
-        ticketNum++;
-        uiManager.UpdateNumView(ticketNum, ticketNumText);
-
-    }
-
-    public void MinusNum()
-    {
-        if(ticketNum > 0)
-            ticketNum--;
-        uiManager.UpdateNumView(ticketNum, ticketNumText);
-
-    }
-
-    public void CashAccountInit()
-    {
-
     }
 
     public void CashPlusNum(int price)
@@ -133,13 +175,12 @@ public class Main : MonoBehaviour
                 c.count++;
                 tempWalletNum[c.index]--;
                 uiManager.UpdateCurrentWalletText(c.index, tempWalletNum[c.index], tempWalletNum, walletCash);
-                totalAmont += c.denomi;
-                uiManager.UpdateShotageAmountText(ticket.cashAmount, totalAmont);
-                uiManager.UpdateNumView(c.count, denomiCashText[c.index]);
-                uiManager.UpdateAmountView(totalAmont, totalNumText);
+                totalAmount += c.denomi;
+                uiManager.UpdateShotageAmountText(ticket.cashAmount, totalAmount);
+                uiManager.UpdateInputText(c.count, c.index);
+                uiManager.UpdateTotalInputText(totalAmount);
             }
         }
-
     }
 
     public void CashMinusNum(int price)
@@ -154,21 +195,25 @@ public class Main : MonoBehaviour
                 c.count--;
                 tempWalletNum[c.index]++;
                 uiManager.UpdateCurrentWalletText(c.index, tempWalletNum[c.index], tempWalletNum, walletCash);
-                totalAmont -= c.denomi;
-                uiManager.UpdateShotageAmountText(ticket.cashAmount, totalAmont);
-                uiManager.UpdateNumView(c.count, denomiCashText[c.index]);
-                uiManager.UpdateAmountView(totalAmont, totalNumText);
+                totalAmount -= c.denomi;
+                uiManager.UpdateShotageAmountText(ticket.cashAmount, totalAmount);
+                uiManager.UpdateInputText(c.count, c.index);
+                uiManager.UpdateTotalInputText(totalAmount);
 
             }
         }
-
     }
 
-   
+    public void UpdateDenomiText()
+    {
+        uiManager.UpdateDenomiText(totalWallet, electronicMoney.e_balance);
+    }
+
+
     public void TakeWallet()
     {
         // お釣りを出す
-        totalBalanceAmount = totalAmont - ticket.cashAmount;
+        totalBalanceAmount = totalAmount - ticket.cashAmount;
 
         // 清算後財布から投入した金種を引く
         foreach (CashStatus c in denomiCash)
@@ -190,45 +235,24 @@ public class Main : MonoBehaviour
         }
     }
 
-    private void InitWalletNum()
+    // 指定した支払い方法で払えるのか
+    public void JudgePurchase(Button button)
     {
-        foreach(CashStatus c in walletCash)
-        {
-            tempWalletNum[c.index] = c.count;
-        }
-    }
-
-    public void JudgeCashPurchase(Button button)
-    {
-        if (totalWallet >= ticket.electAmount)
+        if (button.tag == "Cash" && totalWallet >= ticket.electAmount)
         {
             uiManager.TicketNumText(ticket.cashAmount);
-            uiManager.OnClickCashChoicePayment();
+            OnClickCashChoicePayment();
+        }
+        else if (button.tag == "ElectronicMoney" && electronicMoney.e_balance >= ticket.electAmount)
+        {
+            FinishElectronicMoney();
+            OnClickElectronicChoicePayment();
         }
         else
         {
+            electronicMoney.e_transaction = false;
             uiManager.NotArrowPurchase(button);
         }
-    }
-
-
-    // 電子マネーで払えるかどうか
-    public void JudgeElectPurchase(Button button)
-    {
-        if(electricMoney.initBalance >= ticket.electAmount)
-        {
-            FinishElectlicMoney();
-            uiManager.OnClickElectlicChoicePayment();
-
-        } else {
-            uiManager.NotArrowPurchase(button);
-        }
-    }
-
-    // 電子マネー残高計算
-    public int CalcBalance()
-    {
-        return electricMoney.initBalance -= ticket.electAmount;
     }
 
     public void FinishCash()
@@ -246,20 +270,23 @@ public class Main : MonoBehaviour
         }
 
         uiManager.TicketAmountText(ticket.cashAmount);
-        uiManager.PaymentText(denomiCash, totalAmont);
+        uiManager.PaymentText(denomiCash, totalAmount);
         uiManager.ChangeText(balanceCash, balance);
         uiManager.WalletText(walletCash, totalWallet);
     }
 
-    public void FinishElectlicMoney()
+    public void FinishElectronicMoney()
     {
-        uiManager.ChangeElectText(ticket.electAmount, electricMoney.initBalance, CalcBalance());
+        electronicMoney.e_balance -= ticket.electAmount;
+        uiManager.ChangeElectText(ticket.electAmount, electronicMoney.e_balance, electronicMoney.e_balance);
 
     }
 
-    public void UpdateDenomiText()
+    private void InitWalletNum()
     {
-        uiManager.UpdateDenomiText(totalWallet, electricMoney.initBalance);
+        foreach (CashStatus c in walletCash)
+        {
+            tempWalletNum[c.index] = c.count;
+        }
     }
-
 }

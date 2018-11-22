@@ -10,8 +10,6 @@ public class UIManager : MonoBehaviour
     [SerializeField]
     private GameObject perchaseTicket;
     [SerializeField]
-    private GameObject ticketNum;
-    [SerializeField]
     private GameObject choicePayment;
     [SerializeField]
     private GameObject cashAccount;
@@ -20,7 +18,14 @@ public class UIManager : MonoBehaviour
     [SerializeField]
     private GameObject electlicFinish;
 
-    [SerializeField] List<Text> walletCashText = new List<Text>();
+    // 手持ちの金種のテキストの管理（10,000 -> 10の順）
+    [SerializeField]
+    List<Text> walletCashText = new List<Text>();
+
+    // 投入額の金種のテキストの管理（10,000 -> 10の順）
+    [SerializeField]
+    private List<Text> denomiCashText = new List<Text>();
+
 
     //- choiceTicket関連 -
     [SerializeField]
@@ -30,13 +35,11 @@ public class UIManager : MonoBehaviour
     //- choicePayment関連 -
     [SerializeField]
     private GameObject errorPaymentText;
-    [SerializeField]
-    private Button toCashBt, toElectBt;
     //-----------------------
 
     //- cashAccount関連 -
     [SerializeField]
-    private Text ticketAmount, shotageNum, walletTotalNum;
+    private Text ticketAmount, totalNumText, shotageNum, walletTotalNum;
     //-----------------------
 
     //- finish関連 -
@@ -46,142 +49,67 @@ public class UIManager : MonoBehaviour
     private Text e_purchaseNum, e_paymentNum, e_changeNum;
     //-----------------------
 
-    [SerializeField] 
-    private MachineFaze machineFaze = MachineFaze.Start;
-    private Payment payment;
-
     public Button accountBt;
 
-    enum MachineFaze
-    {
-        Start,
-        ChoiceTicket,
-        TicketNum,
-        ChoicePayment,
-        CashAccount,
-        CashFinish,
-        ElectlicFinish
-    }
-
-    enum Payment
-    {
-        Cash,
-        ElectricMoney
-    }
-
-
-    private void Update()
-    {
-        PerChaseMode();
-    }
-
-    private void PerChaseMode()
-    {
-        switch(machineFaze)
-        {
-            case MachineFaze.Start:
-                cashFinish.SetActive(false);
-                electlicFinish.SetActive(false);
-                Init();
-                startBt.SetActive(true);
-
-                break;
-
-            case MachineFaze.ChoiceTicket:
-                startBt.SetActive(false);
-                perchaseTicket.SetActive(true);
-
-                break;
-
-            case MachineFaze.TicketNum:
-                perchaseTicket.SetActive(false);
-                ticketNum.SetActive(true);
-
-                break;
-
-            case MachineFaze.ChoicePayment:
-                perchaseTicket.SetActive(false);
-                ticketNum.SetActive(false);
-                choicePayment.SetActive(true);
-
-                break;
-
-            case MachineFaze.CashAccount:
-                choicePayment.SetActive(false);
-                cashAccount.SetActive(true);
-
-                break;
-
-            case MachineFaze.CashFinish:
-                cashAccount.SetActive(false);
-                cashFinish.SetActive(true);
-
-                break;
-
-            case MachineFaze.ElectlicFinish:
-                choicePayment.SetActive(false);
-                electlicFinish.SetActive(true);
-
-                break;
-
-        }
-
-    }
 
     public void Init()
     {
         perchaseTicket.SetActive(false);
-        ticketNum.SetActive(false);
         choicePayment.SetActive(false);
         cashAccount.SetActive(false);
         cashFinish.SetActive(false);
         electlicFinish.SetActive(false);
+        errorPaymentText.SetActive(false);
+
         paymentNum.text = "";
         changeNum.text = "";
         walletNum.text = "";
-        errorPaymentText.SetActive(false);
     }
 
-    public void OnClickStartBt()
+    public void InitStart()
     {
-        machineFaze = MachineFaze.ChoiceTicket;
+        startBt.SetActive(true);
     }
 
-    public void OnClickPerchaseTicket()
+    public void InitChoiceTicket()
     {
-        machineFaze = MachineFaze.ChoicePayment;
+        startBt.SetActive(false);
+        perchaseTicket.SetActive(true);
     }
 
-    public void OnClickCashChoicePayment()
+    public void InitChoicePayment()
     {
-        machineFaze = MachineFaze.CashAccount;
+        perchaseTicket.SetActive(false);
+        choicePayment.SetActive(true);
     }
 
-    public void OnClickCashAccount()
+    public void InitCashAccount()
     {
-        machineFaze = MachineFaze.CashFinish;
+        choicePayment.SetActive(false);
+        cashAccount.SetActive(true);
     }
 
-    public void OnClickElectlicChoicePayment()
+    public void InitCashFinish()
     {
-        machineFaze = MachineFaze.ElectlicFinish;
+        cashAccount.SetActive(false);
+        cashFinish.SetActive(true);
     }
 
-    public void ReturnTopFaze()
+    public void InitElectronicFinish()
     {
-        machineFaze = MachineFaze.Start;
+        choicePayment.SetActive(false);
+        electlicFinish.SetActive(true);
     }
 
-    public void UpdateNumView(int num, Text text)
+    public void UpdateInputText(int num, int index)
     {
-        text.text = num.ToString();
+        denomiCashText[index].text = num.ToString();
     }
 
-    public void UpdateAmountView(int num, Text text)
+    public void UpdateTotalInputText(int num)
     {
-        text.text = num.ToString() + "円";
+        totalNumText.text = num.ToString() + "円";
     }
-
 
     public void ArrowClickAccountBt(int totalDenomi, int ticketAmount)
     {
@@ -194,6 +122,11 @@ public class UIManager : MonoBehaviour
     public void TicketAmountText(int ticketNum)
     {
         purchaseNum.text = ticketNum.ToString() + "円";
+    }
+
+    public void TicketNumText(int num)
+    {
+        ticketAmount.text = num.ToString() + "円";
     }
 
     public void PaymentText(List<CashStatus> cashes, int totalNum)
@@ -275,7 +208,6 @@ public class UIManager : MonoBehaviour
         walletCashText[index].text = value.ToString();
         for (int i = 0; i < totalWallet.Length; i++)
         {
-            Debug.Log(i);
             total += totalWallet[i] * cashStatuses[i].denomi;
         }
         walletTotalNum.text = total.ToString() + "円";
@@ -291,8 +223,4 @@ public class UIManager : MonoBehaviour
             shotageNum.text = shotage.ToString() + "円";
     }
 
-    public void TicketNumText(int num)
-    {
-        ticketAmount.text = num.ToString() + "円";
-    }
 }
